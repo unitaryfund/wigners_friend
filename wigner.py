@@ -108,19 +108,22 @@ def reverse_friend(
 
 
 def extended_wigner_circuit(
-        friend_setting_1: str,
-        friend_setting_2: str,
         observer_circuit: cirq.Circuit,
-        rotation_circuit: Optional[cirq.Circuit] = None
+        friend_setting_1: Optional[str] = None,
+        friend_setting_2: Optional[str] = None,
     ) -> cirq.Circuit:
     """Generate the circuit for the extended Wigner's friend scenario with
     choice of either "peek" or "reverse" friend settings."""
 
-    friend_settings = ["peek", "reverse"]
+    friend_settings = ["peek", "reverse_1", "reverse_2", None]
     if not set([friend_setting_1, friend_setting_2]).issubset(set(friend_settings)):
         raise ValueError(f"Friend setting {friend_setting_1} or {friend_setting_2} not recognized.")
 
     num_qubits = cirq.num_qubits(observer_circuit)
+
+    # TODO: These need to be calculate based on the settings passed in.
+    reverse_1_circuit = SingleQubitUnitary(rotation(168))
+    reverse_2_circuit = SingleQubitUnitary(rotation(175))
 
     # Charlie and first part of bipartite system.
     charlie = [cirq.GridQubit(0, i) for i in range(num_qubits-1)]
@@ -134,40 +137,57 @@ def extended_wigner_circuit(
     circuit = state_prep(sys_1, sys_2)
 
     # Top portion of circuit (first friend setting).
-    if friend_setting_1 == "peek":
-        circuit.append(peek_friend(charlie, sys_1, observer_circuit))
-    else:
-        circuit.append(reverse_friend(debbie, sys_2, observer_circuit, rotation_circuit))
+    match friend_setting_1:
+        case "peek":
+            circuit.append(peek_friend(charlie, sys_1, observer_circuit))
+        case "reverse_1":
+            circuit.append(reverse_friend(debbie, sys_2, observer_circuit, reverse_1_circuit))
+        case "reverse_2":
+            circuit.append(reverse_friend(debbie, sys_2, observer_circuit, reverse_2_circuit))
 
     # Bottom portion of circuit (second friend setting).
-    if friend_setting_2 == "peek":
-        circuit.append(peek_friend(charlie, sys_1, observer_circuit))
-    else:
-        circuit.append(reverse_friend(debbie, sys_2, observer_circuit, rotation_circuit))
+    match friend_setting_2:
+        case "peek":
+            circuit.append(peek_friend(charlie, sys_1, observer_circuit))
+        case "reverse_1":
+            circuit.append(reverse_friend(debbie, sys_2, observer_circuit, reverse_1_circuit))
+        case "reverse_2":
+            circuit.append(reverse_friend(debbie, sys_2, observer_circuit, reverse_2_circuit))
 
     return circuit
-
-
-def run():
-    """Run simulation."""
-    pass
 
 
 if __name__ == "__main__":
     sim = cirq.Simulator()
     observer_circuit = MultiQubitUnitary(cnot_ladder(2))
-    rotation_circuit = SingleQubitUnitary(rotation(168))
 
-    circuit = extended_wigner_circuit("peek", "reverse", observer_circuit, rotation_circuit)
+    circuit = extended_wigner_circuit(observer_circuit, "peek", None)
     num_qubits = observer_circuit._num_qubits_()
 
     print(f"Extended Wigner's friend circuit on {2 + num_qubits} qubits: \n")
     print(circuit)
-
+    
     # Run simulations.
     repetitions = 75
     print(f"Simulating {repetitions} repetitions...")
     result = cirq.Simulator().run(program=circuit, repetitions=repetitions)
 
-    print(f"Alice outcomes: {result.histogram(key='a')}")
-    print(f"Bob outcomes: {result.histogram(key='b')}")
+    alice_expectation_value, bob_expectation_value = 0, 0
+    if "a" in result.measurements:
+        alice_expectation_value = sum(np.array(result.measurements["a"][:, 0])) / repetitions
+    if "b" in result.measurements:
+        bob_expectation_value = sum(np.array(result.measurements["b"][:, 0])) / repetitions
+
+    print(f"Alice expectation value: {alice_expectation_value}%")
+    print(f"Bob expectation value: {bob_expectation_value}%")
+
+    # alice_counts = result.histogram(key="a")
+    # bob_counts = result.histogram(key="b")
+
+    # print(f"Alice outcomes: {alice_counts}")
+    # print(f"Bob outcomes: {bob_counts}")
+
+    # alice_bitstring 
+
+
+    #expectation_value = np.mean(find_parity(int_outcomes))
