@@ -3,6 +3,10 @@ import cirq
 import numpy as np
 
 
+def bitstring(bits: str) -> str:
+    return "".join("1" if e else "_" for e in bits)
+
+
 class SingleQubitUnitary(cirq.Gate):
     """Custom single-qubit Unitary gate."""
     def __init__(self, single_qubit_gate):
@@ -15,7 +19,7 @@ class SingleQubitUnitary(cirq.Gate):
     def _unitary_(self):
         return cirq.unitary(self.single_qubit_gate)
 
-    def _circuit_diagram_info_(self, args):
+    def _circuit_diagram_info_(self, _):
         return "U_b"
 
 
@@ -35,7 +39,7 @@ class MultiQubitUnitary(cirq.Gate):
     def _unitary_(self):
         return cirq.unitary(self.multi_qubit_gate)
 
-    def _circuit_diagram_info_(self, args):
+    def _circuit_diagram_info_(self, _):
         return tuple(["@"] * (self._num_qubits_() - 1)) + tuple("U")
 
 
@@ -48,6 +52,7 @@ def cnot_ladder(num_qubits: int) -> cirq.Circuit:
         layer = cirq.Circuit(cirq.CX(qubits[i], qubits[i+1]))
         circuit += layer
     return circuit
+
 
 def rotation_basis() -> cirq.Circuit:
     """Rotation to pick some basis to measure."""
@@ -72,7 +77,7 @@ def peek_friend(
         u_obs: MultiQubitUnitary) -> cirq.Circuit:
     """Peek procedure for Wigner's friend between first part of bipartite system and Charlie."""
     return cirq.Circuit(
-        u_obs.on(charlie, sys_1),
+        u_obs.on(*(charlie + [sys_1])),
         cirq.measure(sys_1, key="a")
     )
 
@@ -85,60 +90,73 @@ def reverse_friend(
 ) -> cirq.Circuit:
     """Reverse procedure for Wigner's friend between second part of bipartite system and Debbie."""
     return cirq.Circuit(
-        u_obs.on(sys_2, debbie),
-        cirq.inverse(u_obs.on(sys_2, debbie)),
+        u_obs.on(*([sys_2] + debbie)),
+        cirq.inverse(u_obs.on(*([sys_2] + debbie))),
         u_b.on(sys_2),
+        cirq.measure(sys_2, key="b"),
     )
-
 
 
 if __name__ == "__main__":
     sim = cirq.Simulator()
+    num_qubits = 2
 
     # For the sake of example, use a CNOT ladder circuit for U.
-    u_obs = MultiQubitUnitary(cnot_ladder(2))
+    u_obs = MultiQubitUnitary(cnot_ladder(num_qubits))
     u_b = SingleQubitUnitary(cirq.H)
 
     print("Simulate the circuit:")
 
-    # Charlie and ...
-    charlie = cirq.GridQubit(0, 0)
-    sys_1 = cirq.GridQubit(0, 1)
+    # Charlie and first part of bipartite system.
+    charlie = [cirq.GridQubit(0, i) for i in range(num_qubits-1)]
+    sys_1 = cirq.GridQubit(0, num_qubits-1)
 
-    # Debbie and ...
+    # Debbie and second part of bipartite system.
     sys_2 = cirq.GridQubit(1, 0)
-    debbie = cirq.GridQubit(1, 1)
+    debbie = [cirq.GridQubit(1, i) for i in range(1, num_qubits)]
 
     circuit = state_prep(sys_1, sys_2)
 
     circuit.append(peek_friend(charlie, sys_1, u_obs))
     circuit.append(reverse_friend(debbie, sys_2, u_obs, u_b))
 
-    # Measure:
-    circuit.append(cirq.measure(sys_2, key="b"))
-
-
-    # circuit = cirq.Circuit(
-    #     # State prep: generates the 1/sqrt(3) * (|00> + |01> + |10>) state.
-    #     cirq.Ry(rads=2 * np.arccos(np.sqrt(2/3))).on(sys_1),
-    #     cirq.Ry(rads=np.pi/4).on(sys_2),
-    #     cirq.X(sys_1),
-    #     cirq.CX(sys_1, sys_2),
-    #     cirq.X(sys_1),
-    #     cirq.Ry(rads=-np.pi/4).on(sys_2),
-
-    #     # Peek friend:
-    #     u_obs.on(charlie, sys_1),
-    #     cirq.measure(sys_1, key="a"),
-
-    #     # Reverse friend:
-    #     u_obs.on(sys_2, debbie),
-    #     u_b.on(sys_2),
-    #     cirq.inverse(u_obs.on(sys_2, debbie)),
-    #     cirq.measure(sys_2, key="b"),
-    # )
-
     print(circuit)
 
     results = sim.simulate(circuit)
     print(results)
+
+    exit()
+
+    # Run simulations.
+    repetitions = 75
+    print(f"Simulating {repetitions} repetitions...")
+    result = cirq.Simulator().run(program=circuit, repetitions=repetitions)
+
+    a = np.array(result.measurements["a"][:, 0])
+    b = np.array(result.measurements["b"][:, 0])
+
+    # Print data.
+    print()
+    print('Results')
+    print('a:', bitstring(a))
+    print('b:', bitstring(b))
+
+    #circuit = cirq.Circuit(
+    #    # State prep: generates the 1/sqrt(3) * (|00> + |01> + |10>) state.
+    #    cirq.Ry(rads=2 * np.arccos(np.sqrt(2/3))).on(sys_1),
+    #    cirq.Ry(rads=np.pi/4).on(sys_2),
+    #    cirq.X(sys_1),
+    #    cirq.CX(sys_1, sys_2),
+    #    cirq.X(sys_1),
+    #    cirq.Ry(rads=-np.pi/4).on(sys_2),
+
+    #    # Peek friend:
+    #    u_obs.on(*(charlie + [sys_1])),
+    #    cirq.measure(sys_1, key="a"),
+
+    #    # Reverse friend:
+    #    u_obs.on(*([sys_2] + debbie)),
+    #    cirq.inverse(u_obs.on(*([sys_2] + debbie))),
+    #    u_b.on(sys_2),
+    #    cirq.measure(sys_2, key="b"),
+    #)
