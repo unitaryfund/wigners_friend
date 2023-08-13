@@ -10,37 +10,37 @@ import numpy as np
 
 class SingleQubitUnitary(cirq.Gate):
     """Custom single-qubit Unitary gate."""
-    def __init__(self, single_qubit_gate):
+    def __init__(self, single_qubit_gate: cirq.Circuit) -> None:
         super(SingleQubitUnitary, self)
         self.single_qubit_gate = single_qubit_gate
 
-    def _num_qubits_(self):
+    def _num_qubits_(self) -> int:
         return cirq.num_qubits(self.single_qubit_gate)
 
-    def _unitary_(self):
+    def _unitary_(self) -> np.ndarray:
         return cirq.unitary(self.single_qubit_gate)
 
-    def _circuit_diagram_info_(self, _):
+    def _circuit_diagram_info_(self, _) -> str:
         return "U_b"
 
 
 class MultiQubitUnitary(cirq.Gate):
-    """Custom two-qubit Unitary gate."""
-    def __init__(self, multi_qubit_gate):
+    """Custom multi-qubit Unitary gate."""
+    def __init__(self, multi_qubit_gate: cirq.Circuit) -> None:
         super(MultiQubitUnitary, self)
         self.multi_qubit_gate = multi_qubit_gate
 
-    def __pow__(self, _):
+    def __pow__(self, _) -> cirq.Circuit:
         """Overloading this allows us to take the inverse (conjugate transpose) of our custom gate."""
         return cirq.MatrixGate(cirq.unitary(self.multi_qubit_gate).conj().T)
 
-    def _num_qubits_(self):
+    def _num_qubits_(self) -> int:
         return cirq.num_qubits(self.multi_qubit_gate)
 
-    def _unitary_(self):
+    def _unitary_(self) -> np.ndarray:
         return cirq.unitary(self.multi_qubit_gate)
 
-    def _circuit_diagram_info_(self, _):
+    def _circuit_diagram_info_(self, _) -> tuple[str]:
         return tuple(["@"] * (self._num_qubits_() - 1)) + tuple("U")
 
 
@@ -81,45 +81,40 @@ def state_prep(sys_1: cirq.GridQubit, sys_2: cirq.GridQubit) -> cirq.Circuit:
 
 
 def peek_friend(
-        friend: cirq.GridQubit,
+        friend: list[cirq.GridQubit],
         friend_key: str,
         sys: cirq.GridQubit,
         u_obs: MultiQubitUnitary) -> cirq.Circuit:
     """Peek procedure for Wigner's friend scenario."""
+    circuit = cirq.Circuit()
     if friend_key == "a":
-        return cirq.Circuit(
-            u_obs.on(*(friend + [sys])),
-            cirq.measure(sys, key=friend_key)
-        )
+        circuit.append(cirq.Circuit(u_obs.on(*(friend + [sys]))))
     elif friend_key == "b":
-        return cirq.Circuit(
-            u_obs.on(*([sys] + friend)),
-            cirq.measure(sys, key=friend_key)
-        )
+        circuit.append(cirq.Circuit(u_obs.on(*([sys] + friend))))
+
+    circuit.append(cirq.measure(sys, key=friend_key))
+    return circuit
 
 
 def reverse_friend(
-        friend: cirq.GridQubit, 
+        friend: list[cirq.GridQubit], 
         friend_key: str,
         sys: cirq.GridQubit,
         u_obs: MultiQubitUnitary,
         u_b: SingleQubitUnitary
 ) -> cirq.Circuit:
     """Reverse procedure for Wigner's friend scenario."""
+    circuit = cirq.Circuit()
     if friend_key == "a":
-        return cirq.Circuit(
-            u_obs.on(*(friend + [sys])),
-            cirq.inverse(u_obs.on(*(friend + [sys]))),
-            u_b.on(sys),
-            cirq.measure(sys, key=friend_key),
-        )
+        circuit.append(u_obs.on(*(friend + [sys])))
+        circuit.append(cirq.inverse(u_obs.on(*(friend + [sys]))))
     elif friend_key == "b":
-        return cirq.Circuit(
-            u_obs.on(*([sys] + friend)),
-            cirq.inverse(u_obs.on(*([sys] + friend))),
-            u_b.on(sys),
-            cirq.measure(sys, key=friend_key),
-        )
+        circuit.append(u_obs.on(*([sys] + friend)))
+        circuit.append(cirq.inverse(u_obs.on(*([sys] + friend))))
+
+    circuit.append(u_b.on(sys))
+    circuit.append(cirq.measure(sys, key=friend_key))
+    return circuit
 
 
 def extended_wigner_circuit(
@@ -182,32 +177,60 @@ def expectation_value(circuit: cirq.Circuit, repetitions: int = 75) -> tuple[flo
     return alice_expectation_value, bob_expectation_value
 
 
-def lf_facet_1(observer_circuit: cirq.Circuit) -> float:
+def lf_facet_1(expectation_values: dict[str, float]) -> float:
     """Genuine LF facet 1 as defined in Equation (13) from arXiv:1907.05607.
     
     The inequality for this facet is defined in terms of expectation values:
         -<A_1> - <A_2> - <B_1> - <B_2> - <A_1 B_1> 
         - 2 <A_1 B_2> - 2 <A_2 B_1> + 2 <A_2 B_2>
         - <A_2 B_3> - <A_3 B_2> - <A_3 B_3> - 6 <= 0
-
-    where the sub-indices define the friend settings used, namely:
-        1. Peek
-        2. Reverse 1
-        3. Reverse 2
     """
-    a_1, b_1 = expectation_value(extended_wigner_circuit(observer_circuit, "peek", "peek"))
-    a_2, b_2 = expectation_value(extended_wigner_circuit(observer_circuit, "reverse_1", "reverse_1"))
-    a_3, b_3 = expectation_value(extended_wigner_circuit(observer_circuit, "reverse_2", "reverse_2"))
-
+    a_1, a_2, a_3 = expectation_values["a_1"], expectation_values["a_2"], expectation_values["a_3"]
+    b_1, b_2, b_3 = expectation_values["b_1"], expectation_values["b_2"], expectation_values["b_3"]
     facet = -a_1 - a_2 - b_1 - b_2 - a_1 * b_1 \
         - 2 * a_1 * b_2 - 2 * a_2 * b_1 + 2 * a_2 * b_2 \
         - a_2 * b_3 - a_3 * b_2 - a_3 * b_3 - 6
 
     # Inequality is violated if the facet equation is <= 0.
-    is_violated = facet <= 0
+    return facet <= 0
 
-    return is_violated
+
+def lf_facet_2(expectation_values: dict[str, float]) -> float:
+    """Genuine LF facet 2 as defined in Equation (14) from arXiv:1907.05607.
+    
+    The inequality for this facet is defined in terms of expectation values:
+        -<A_1> - <A_2> - <A_3> - <B_1> 
+        -<A_1 B_1> - <A_2 B_1> - <A_3 B_1> - 2 <A_1 B_2>
+        +<A_2 B_2> + <A_3 B_2> - <A_2 B_3> + <A_3 B_3> - 5 <= 0
+    """
+    a_1, a_2, a_3 = expectation_values["a_1"], expectation_values["a_2"], expectation_values["a_3"]
+    b_1, b_2, b_3 = expectation_values["b_1"], expectation_values["b_2"], expectation_values["b_3"]
+    facet = -a_1 - a_2 - a_3 - b_1 \
+        -a_1 * b_1 - a_2 * b_1 - a_3 * b_1 - 2 * a_1 * b_2 \
+        + a_1 * b_2 + a_3 * b_2 - a_2 * b_3 + a_3 * b_3 - 5
+    
+    # Inequality is violated if the facet equation is <= 0.
+    return facet <= 0
+
 
 if __name__ == "__main__":
+    # Define observer circuit for protocol.
     observer_circuit = MultiQubitUnitary(cnot_ladder(2))
-    print(f"Is inequality violated: {lf_facet_1(observer_circuit)}")
+
+    # Calculate expectation values:
+    a_1, b_1 = expectation_value(extended_wigner_circuit(observer_circuit, "peek", "peek"))
+    a_2, b_2 = expectation_value(extended_wigner_circuit(observer_circuit, "reverse_1", "reverse_1"))
+    a_3, b_3 = expectation_value(extended_wigner_circuit(observer_circuit, "reverse_2", "reverse_2"))
+
+    # Sub-indices define the friend settings used, namely:
+    #   1: Peek
+    #   2: Reverse 1
+    #   3: Reverse 2
+    expectation_values = {
+        "a_1": a_1, "a_2": a_2, "a_3": a_3,
+        "b_1": b_1, "b_2": b_2, "b_3": b_3,
+    }
+
+    # Check LF facet violations:
+    print(f"Is LF-1 inequality violated: {lf_facet_1(expectation_values)}")
+    print(f"Is LF-2 inequality violated: {lf_facet_2(expectation_values)}")
