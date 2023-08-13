@@ -133,7 +133,7 @@ def extended_wigner_circuit(
 
     # TODO: These need to be calculate based on the settings passed in.
     reverse_1_circuit = SingleQubitUnitary(rotation(168))
-    reverse_2_circuit = SingleQubitUnitary(rotation(175))
+    reverse_2_circuit = SingleQubitUnitary(rotation(118))
 
     # Charlie and first part of bipartite system.
     charlie = [cirq.GridQubit(0, i) for i in range(num_qubits-1)]
