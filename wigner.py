@@ -8,6 +8,33 @@ import cirq
 import numpy as np
 
 
+def alice_projector(x: int) -> np.ndarray:
+    """Alice's projective measurement as defined in Eq. (23) in
+    arXiv:1907.05607"""
+    angles = [168, 0, 118]
+    e0 = np.array([1, 0]).reshape(-1, 1)
+    e1 = np.array([0, 1]).reshape(-1, 1)
+    phi = 1/np.sqrt(2) * (e0 + np.exp(1j * angles[x]) * e1)
+
+    proj = phi @ phi.conj().T
+    
+    return 2 * proj - e0 @ e0.conj().T - e1 @ e1.conj().T
+
+
+def bob_projector(y: int) -> np.ndarray:
+    """Bob's projective measurement as defined in Eq. (24) in
+    arXiv:1907.05607"""
+    angles = [168, 0, 118]
+    beta = 175
+    e0 = np.array([1, 0]).reshape(-1, 1)
+    e1 = np.array([0, 1]).reshape(-1, 1)
+    phi = 1/np.sqrt(2) * (e0 + np.exp(1j * (beta - angles[y])) * e1)
+
+    proj = phi @ phi.conj().T
+    
+    return 2 * proj - e0 @ e0.conj().T - e1 @ e1.conj().T
+
+
 class SingleQubitUnitary(cirq.Gate):
     """Custom single-qubit Unitary gate."""
     def __init__(self, single_qubit_gate: cirq.Circuit) -> None:
@@ -187,12 +214,9 @@ def lf_facet_1(expectation_values: dict[str, float]) -> float:
     """
     a_1, a_2, a_3 = expectation_values["a_1"], expectation_values["a_2"], expectation_values["a_3"]
     b_1, b_2, b_3 = expectation_values["b_1"], expectation_values["b_2"], expectation_values["b_3"]
-    facet = -a_1 - a_2 - b_1 - b_2 - a_1 * b_1 \
+    return -a_1 - a_2 - b_1 - b_2 - a_1 * b_1 \
         - 2 * a_1 * b_2 - 2 * a_2 * b_1 + 2 * a_2 * b_2 \
         - a_2 * b_3 - a_3 * b_2 - a_3 * b_3 - 6
-
-    # Inequality is violated if the facet equation is <= 0.
-    return facet <= 0
 
 
 def lf_facet_2(expectation_values: dict[str, float]) -> float:
@@ -205,12 +229,15 @@ def lf_facet_2(expectation_values: dict[str, float]) -> float:
     """
     a_1, a_2, a_3 = expectation_values["a_1"], expectation_values["a_2"], expectation_values["a_3"]
     b_1, b_2, b_3 = expectation_values["b_1"], expectation_values["b_2"], expectation_values["b_3"]
-    facet = -a_1 - a_2 - a_3 - b_1 \
+    return -a_1 - a_2 - a_3 - b_1 \
         -a_1 * b_1 - a_2 * b_1 - a_3 * b_1 - 2 * a_1 * b_2 \
         + a_1 * b_2 + a_3 * b_2 - a_2 * b_3 + a_3 * b_3 - 5
-    
-    # Inequality is violated if the facet equation is <= 0.
-    return facet <= 0
+
+
+def positivity_facet_1_1(expectation_values: dict[str, float]) -> float:
+    """Positivity facet from Eq (19)."""
+    a_1, b_1 = expectation_values["a_1"], expectation_values["b_1"]
+    return 1 + a_1 + b_1 + a_1 * b_1
 
 
 if __name__ == "__main__":
@@ -232,5 +259,8 @@ if __name__ == "__main__":
     }
 
     # Check LF facet violations:
-    print(f"Is LF-1 inequality violated: {lf_facet_1(expectation_values)}")
-    print(f"Is LF-2 inequality violated: {lf_facet_2(expectation_values)}")
+    #print(f"Is LF-1 inequality violated: {lf_facet_1(expectation_values)}")
+    #print(f"Is LF-2 inequality violated: {lf_facet_2(expectation_values)}")
+
+    print(1 + a_1 + b_1 + a_1 * b_1)
+    
