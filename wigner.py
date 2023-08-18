@@ -8,31 +8,8 @@ import cirq
 import numpy as np
 
 
-def alice_projector(x: int) -> np.ndarray:
-    """Alice's projective measurement as defined in Eq. (23) in
-    arXiv:1907.05607"""
-    angles = [168, 0, 118]
-    e0 = np.array([1, 0]).reshape(-1, 1)
-    e1 = np.array([0, 1]).reshape(-1, 1)
-    phi = 1/np.sqrt(2) * (e0 + np.exp(1j * angles[x]) * e1)
-
-    proj = phi @ phi.conj().T
-    
-    return 2 * proj - e0 @ e0.conj().T - e1 @ e1.conj().T
-
-
-def bob_projector(y: int) -> np.ndarray:
-    """Bob's projective measurement as defined in Eq. (24) in
-    arXiv:1907.05607"""
-    angles = [168, 0, 118]
-    beta = 175
-    e0 = np.array([1, 0]).reshape(-1, 1)
-    e1 = np.array([0, 1]).reshape(-1, 1)
-    phi = 1/np.sqrt(2) * (e0 + np.exp(1j * (beta - angles[y])) * e1)
-
-    proj = phi @ phi.conj().T
-    
-    return 2 * proj - e0 @ e0.conj().T - e1 @ e1.conj().T
+# Angles as defined in arXiv:1907.05607.
+ANGLES = [np.deg2rad(168), 0, np.deg2rad(118)]
 
 
 class SingleQubitUnitary(cirq.Gate):
@@ -82,19 +59,6 @@ def cnot_ladder(num_qubits: int) -> cirq.Circuit:
     return circuit
 
 
-def rotation(angle: float) -> cirq.Circuit:
-    """Rotation to pick some basis to measure.
-    
-    Distilled from Equations (23) and (24) from arXiv:1907.05607.
-    """
-    radians = 2 * np.deg2rad(angle)
-    qubit = cirq.LineQubit(0)
-
-    return cirq.Circuit(
-        cirq.Rz(rads=radians).on(qubit),
-    )
-
-
 def state_prep(sys_1: cirq.GridQubit, sys_2: cirq.GridQubit) -> cirq.Circuit:
     """Generates the initial state of 1/sqrt(3) * (|00> + |01> + |10>)"""
     return cirq.Circuit(
@@ -119,6 +83,9 @@ def peek_friend(
     elif friend_key == "b":
         circuit.append(cirq.Circuit(u_obs.on(*([sys] + friend))))
 
+    # Rotate the qubit to the computational basis using the Rz gate
+    circuit.append(cirq.Rz(rads=-ANGLES[0]).on(sys))
+
     circuit.append(cirq.measure(sys, key=friend_key))
     return circuit
 
@@ -128,7 +95,7 @@ def reverse_friend(
         friend_key: str,
         sys: cirq.GridQubit,
         u_obs: MultiQubitUnitary,
-        u_b: SingleQubitUnitary
+        friend_setting: str,
 ) -> cirq.Circuit:
     """Reverse procedure for Wigner's friend scenario."""
     circuit = cirq.Circuit()
@@ -139,7 +106,12 @@ def reverse_friend(
         circuit.append(u_obs.on(*([sys] + friend)))
         circuit.append(cirq.inverse(u_obs.on(*([sys] + friend))))
 
-    circuit.append(u_b.on(sys))
+    # Rotate the qubit to the computational basis using the Rz gate
+    if friend_setting == "reverse_1":
+        circuit.append(cirq.Rz(rads=-ANGLES[1]).on(sys))
+    elif friend_setting == "reverse_2":
+        circuit.append(cirq.Rz(rads=-ANGLES[2]).on(sys))
+
     circuit.append(cirq.measure(sys, key=friend_key))
     return circuit
 
@@ -158,10 +130,6 @@ def extended_wigner_circuit(
 
     num_qubits = cirq.num_qubits(observer_circuit)
 
-    # TODO: These need to be calculate based on the settings passed in.
-    reverse_1_circuit = SingleQubitUnitary(rotation(168))
-    reverse_2_circuit = SingleQubitUnitary(rotation(118))
-
     # Charlie and first part of bipartite system.
     charlie = [cirq.GridQubit(0, i) for i in range(num_qubits-1)]
     sys_1 = cirq.GridQubit(0, num_qubits-1)
@@ -170,7 +138,7 @@ def extended_wigner_circuit(
     sys_2 = cirq.GridQubit(1, 0)
     debbie = [cirq.GridQubit(1, i) for i in range(1, num_qubits)]
 
-    # Define the experiment based on friend settings.
+    # Initial preparation of state: 1/sqrt(3)(|00> + |01> + |10>)
     circuit = state_prep(sys_1, sys_2)
 
     # Top portion of circuit (first friend setting).
@@ -178,18 +146,18 @@ def extended_wigner_circuit(
         case "peek":
             circuit.append(peek_friend(charlie, "a", sys_1, observer_circuit))
         case "reverse_1":
-            circuit.append(reverse_friend(charlie, "a", sys_1, observer_circuit, reverse_1_circuit))
+            circuit.append(reverse_friend(charlie, "a", sys_1, observer_circuit, friend_setting_1))
         case "reverse_2":
-            circuit.append(reverse_friend(charlie, "a", sys_1, observer_circuit, reverse_2_circuit))
+            circuit.append(reverse_friend(charlie, "a", sys_1, observer_circuit, friend_setting_1))
 
     # Bottom portion of circuit (second friend setting).
     match friend_setting_2:
         case "peek":
             circuit.append(peek_friend(debbie, "b", sys_2, observer_circuit))
         case "reverse_1":
-            circuit.append(reverse_friend(debbie, "b", sys_2, observer_circuit, reverse_1_circuit))
+            circuit.append(reverse_friend(debbie, "b", sys_2, observer_circuit, friend_setting_2))
         case "reverse_2":
-            circuit.append(reverse_friend(debbie, "b", sys_2, observer_circuit, reverse_2_circuit))
+            circuit.append(reverse_friend(debbie, "b", sys_2, observer_circuit, friend_setting_2))
 
     return circuit
 
@@ -258,9 +226,4 @@ if __name__ == "__main__":
         "b_1": b_1, "b_2": b_2, "b_3": b_3,
     }
 
-    # Check LF facet violations:
-    #print(f"Is LF-1 inequality violated: {lf_facet_1(expectation_values)}")
-    #print(f"Is LF-2 inequality violated: {lf_facet_2(expectation_values)}")
-
-    print(1 + a_1 + b_1 + a_1 * b_1)
-    
+    print(lf_facet_2(expectation_values))
