@@ -58,6 +58,14 @@ def cnot_ladder(num_qubits: int) -> cirq.Circuit:
         circuit += layer
     return circuit
 
+def r_gate(theta: float, phi: float) -> cirq.Circuit:
+    """https://qiskit.org/documentation/stubs/qiskit.circuit.library.RGate.html"""
+    mat = np.array([
+        [np.cos(theta/2), -1j * np.exp(-1j * phi) * np.sin(theta/2)],
+        [-1j*np.exp(1j*phi) * np.sin(theta/2), np.cos(theta/2)]
+    ])
+    return cirq.MatrixGate(mat)
+
 
 def state_prep(sys_1: cirq.GridQubit, sys_2: cirq.GridQubit) -> cirq.Circuit:
     """Generates the initial state of 1/sqrt(3) * (|00> + |01> + |10>)"""
@@ -68,6 +76,18 @@ def state_prep(sys_1: cirq.GridQubit, sys_2: cirq.GridQubit) -> cirq.Circuit:
         cirq.CX(sys_1, sys_2),
         cirq.X(sys_1),
         cirq.Ry(rads=-np.pi/4).on(sys_2),
+    )
+
+def state_prep2(sys_1: cirq.GridQubit, sys_2: cirq.GridQubit) -> cirq.Circuit:
+    """Generates the initial state of 1/sqrt(3) * (|00> + |10> + |11>)"""
+    theta = np.arccos(-1/3)
+    phi = np.pi/2
+    return cirq.Circuit(
+        cirq.Ry(rads=np.pi/4).on(sys_1),
+        r_gate(theta, phi).on(sys_2),
+        cirq.CX(sys_2, sys_1),
+        cirq.Ry(rads=-np.pi/4).on(sys_1),
+        cirq.CX(sys_2, sys_1),
     )
 
 
@@ -139,7 +159,7 @@ def extended_wigner_circuit(
     debbie = [cirq.GridQubit(1, i) for i in range(1, num_qubits)]
 
     # Initial preparation of state: 1/sqrt(3)(|00> + |01> + |10>)
-    circuit = state_prep(sys_1, sys_2)
+    circuit = state_prep2(sys_1, sys_2)
 
     # Top portion of circuit (first friend setting).
     match friend_setting_1:
@@ -162,12 +182,20 @@ def extended_wigner_circuit(
     return circuit
 
 
-def expectation_value(circuit: cirq.Circuit, repetitions: int = 75) -> tuple[float, float]:
+def expectation_value(circuit: cirq.Circuit, repetitions: int = 500) -> tuple[float, float]:
     """Run the circuit `repetitions` times and calculate the resulting expectation value."""
     result = cirq.Simulator().run(program=circuit, repetitions=repetitions)
 
-    alice_expectation_value = sum(np.array(result.measurements["a"][:, 0])) / repetitions
-    bob_expectation_value = sum(np.array(result.measurements["b"][:, 0])) / repetitions
+    alice_measurements = np.array(result.measurements["a"][:, 0])
+    bob_measurements = np.array(result.measurements["b"][:, 0])
+
+    # Map outcomes: 0 -> +1 and 1 -> -1
+    alice_mapped_outcomes = [1 if outcome == 0 else -1 for outcome in alice_measurements]
+    bob_mapped_outcomes = [1 if outcome == 0 else -1 for outcome in bob_measurements]
+
+    # Calculate the expectation values
+    alice_expectation_value = np.mean(alice_mapped_outcomes)
+    bob_expectation_value = np.mean(bob_mapped_outcomes)
 
     return alice_expectation_value, bob_expectation_value
 
@@ -208,9 +236,21 @@ def positivity_facet_1_1(expectation_values: dict[str, float]) -> float:
     return 1 + a_1 + b_1 + a_1 * b_1
 
 
+def positivity_facet_1_1(expectation_values: dict[str, float]) -> float:
+    """Positivity facet from Eq (19)."""
+    a_1, b_1 = expectation_values["a_1"], expectation_values["b_1"]
+    return 1 + a_1 + b_1 + a_1 * b_1
+
+
+def calculate_expectation(results, key):
+    measurements = results.data[key].to_numpy()
+    mapped_outcomes = [1 if outcome == 0 else -1 for outcome in measurements]
+    return np.mean(mapped_outcomes)
+
+
 if __name__ == "__main__":
     # Define observer circuit for protocol.
-    observer_circuit = MultiQubitUnitary(cnot_ladder(2))
+    observer_circuit = MultiQubitUnitary(cnot_ladder(6))
 
     # Calculate expectation values:
     a_1, b_1 = expectation_value(extended_wigner_circuit(observer_circuit, "peek", "peek"))
@@ -226,4 +266,30 @@ if __name__ == "__main__":
         "b_1": b_1, "b_2": b_2, "b_3": b_3,
     }
 
+    print(positivity_facet_1_1(expectation_values))
+    print(lf_facet_1(expectation_values))
     print(lf_facet_2(expectation_values))
+
+    exit()
+
+    num_qubits = cirq.num_qubits(observer_circuit)
+
+    # Charlie and first part of bipartite system.
+    charlie = [cirq.GridQubit(0, i) for i in range(num_qubits-1)]
+    sys_1 = cirq.GridQubit(0, num_qubits-1)
+
+    # Debbie and second part of bipartite system.
+    sys_2 = cirq.GridQubit(1, 0)
+    debbie = [cirq.GridQubit(1, i) for i in range(1, num_qubits)]
+
+    circuit = state_prep2(sys_1, sys_2)
+
+    # Initialize Simulator
+    s = cirq.Simulator()
+
+    print('Simulate the circuit:')
+    results = s.simulate(circuit)
+    print(results)
+
+    # For sampling, we need to add a measurement at the end
+    circuit.append(cirq.measure(sys_1, sys_2, key='result'))

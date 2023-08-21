@@ -1,3 +1,4 @@
 toqito
 qiskit
 cirq
+pylatexenc

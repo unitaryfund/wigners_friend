@@ -1,7 +1,14 @@
 from toqito.matrices import standard_basis
+from toqito.state_ops import schmidt_decomposition
+from toqito.matrix_props import is_unitary
 import numpy as np
+import scipy
 
 e0, e1 = standard_basis(2, 1)
+e00 = np.kron(e0, e0)
+e01 = np.kron(e0, e1)
+e10 = np.kron(e1, e0)
+e11 = np.kron(e1, e1)
 phi0 = 1/np.sqrt(2) * (e0 + e1)
 phi1 = 1/np.sqrt(2) * (e0 - e1)
 sys = 1/np.sqrt(3) * (np.kron(e0, e0) + np.kron(e0, e1) + np.kron(e1, e1))
@@ -67,3 +74,23 @@ print(np.around(b0, decimals=5))
 c = np.exp(1j * (beta - angles[idx]))
 print(c)
 print(c**2 - 1)
+
+s = 1/np.sqrt(3) * (np.kron(e0, e0) + np.kron(e0, e1) + np.kron(e1, e0))
+print("\n")
+
+mat = np.array([
+    [1/np.sqrt(3), 1/np.sqrt(3), -1/np.sqrt(6), -1/np.sqrt(6)],
+    [1/np.sqrt(3), -1/np.sqrt(3), -1/np.sqrt(6), 1/np.sqrt(6)],
+    [1/np.sqrt(3), 0, np.sqrt(2/3), 0],
+    [0, 1/np.sqrt(3), 0, np.sqrt(2/3)],
+])
+
+
+I = np.identity(2)
+X = np.array([[0, 1], [1, 0]])
+H = 1/np.sqrt(2) * np.array([[1, 1], [1, -1]])
+U = np.array([[1/np.sqrt(3), np.sqrt(2/3)], [np.sqrt(2/3), -1/np.sqrt(3)]])
+x = np.kron(I, U) @ np.kron(H, I) @ np.kron(e0, e0)
+print(x)
+print(np.outer(x, x))
+#print(np.kron(H, H) @ np.kron(I, X) @ np.kron(e0, e0))
