@@ -58,6 +58,7 @@ def cnot_ladder(num_qubits: int) -> cirq.Circuit:
         circuit += layer
     return circuit
 
+
 def r_gate(theta: float, phi: float) -> cirq.Circuit:
     """https://qiskit.org/documentation/stubs/qiskit.circuit.library.RGate.html"""
     mat = np.array([
@@ -158,7 +159,7 @@ def extended_wigner_circuit(
     sys_2 = cirq.GridQubit(1, 0)
     debbie = [cirq.GridQubit(1, i) for i in range(1, num_qubits)]
 
-    # Initial preparation of state: 1/sqrt(3)(|00> + |01> + |10>)
+    # Initial preparation of state:
     circuit = state_prep2(sys_1, sys_2)
 
     # Top portion of circuit (first friend setting).
@@ -182,7 +183,7 @@ def extended_wigner_circuit(
     return circuit
 
 
-def expectation_value(circuit: cirq.Circuit, repetitions: int = 500) -> tuple[float, float]:
+def expectation_value(circuit: cirq.Circuit, repetitions: int = 1000) -> tuple[float, float]:
     """Run the circuit `repetitions` times and calculate the resulting expectation value."""
     result = cirq.Simulator().run(program=circuit, repetitions=repetitions)
 
@@ -198,6 +199,12 @@ def expectation_value(circuit: cirq.Circuit, repetitions: int = 500) -> tuple[fl
     bob_expectation_value = np.mean(bob_mapped_outcomes)
 
     return alice_expectation_value, bob_expectation_value
+
+
+def calculate_expectation(results, key):
+    measurements = results.data[key].to_numpy()
+    mapped_outcomes = [1 if outcome == 0 else -1 for outcome in measurements]
+    return np.mean(mapped_outcomes)
 
 
 def lf_facet_1(expectation_values: dict[str, float]) -> float:
@@ -230,22 +237,36 @@ def lf_facet_2(expectation_values: dict[str, float]) -> float:
         + a_1 * b_2 + a_3 * b_2 - a_2 * b_3 + a_3 * b_3 - 5
 
 
+def brunker_facet(expectation_values: dict[str, float]) -> float:
+    """Brunker inequality from Eq. (17)."""
+    a_1, b_1 = expectation_values["a_1"], expectation_values["b_1"]
+    a_2, b_3 = expectation_values["a_2"], expectation_values["b_3"]
+    return a_1 * b_1 - a_1 * b_3 - a_2 * b_1 - a_2 * b_3 - 2
+
+
+def semi_brunker_facet(expectation_values: dict[str, float]) -> float:
+    """Semi-brunker inequality from Eq. (18)."""
+    a_1, b_2 = expectation_values["a_1"], expectation_values["b_2"]
+    a_3, b_3 = expectation_values["a_3"], expectation_values["b_3"]
+    return -a_1 * b_2 + a_1 * b_3 - a_3 * b_2 - a_3 * b_3 - 2
+
+
 def positivity_facet_1_1(expectation_values: dict[str, float]) -> float:
     """Positivity facet from Eq (19)."""
     a_1, b_1 = expectation_values["a_1"], expectation_values["b_1"]
     return 1 + a_1 + b_1 + a_1 * b_1
 
 
-def positivity_facet_1_1(expectation_values: dict[str, float]) -> float:
-    """Positivity facet from Eq (19)."""
-    a_1, b_1 = expectation_values["a_1"], expectation_values["b_1"]
-    return 1 + a_1 + b_1 + a_1 * b_1
+def positivity_facet_1_2(expectation_values: dict[str, float]) -> float:
+    """Positivity facet from Eq (20)."""
+    a_1, b_2 = expectation_values["a_1"], expectation_values["b_2"]
+    return 1 + a_1 + b_2 + a_1 * b_2
 
 
-def calculate_expectation(results, key):
-    measurements = results.data[key].to_numpy()
-    mapped_outcomes = [1 if outcome == 0 else -1 for outcome in measurements]
-    return np.mean(mapped_outcomes)
+def positivity_facet_2_2(expectation_values: dict[str, float]) -> float:
+    """Positivity facet from Eq (21)."""
+    a_2, b_2 = expectation_values["a_2"], expectation_values["b_2"]
+    return 1 + a_2 + b_2 + a_2 * b_2
 
 
 if __name__ == "__main__":
@@ -267,8 +288,10 @@ if __name__ == "__main__":
     }
 
     print(positivity_facet_1_1(expectation_values))
-    print(lf_facet_1(expectation_values))
-    print(lf_facet_2(expectation_values))
+    print(positivity_facet_1_2(expectation_values))
+    print(positivity_facet_2_2(expectation_values))
+    print(semi_brunker_facet(expectation_values))
+    print(brunker_facet(expectation_values))
 
     exit()
 
