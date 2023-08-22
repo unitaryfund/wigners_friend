@@ -12,22 +12,6 @@ import numpy as np
 ANGLES = [np.deg2rad(168), 0, np.deg2rad(118)]
 
 
-class SingleQubitUnitary(cirq.Gate):
-    """Custom single-qubit Unitary gate."""
-    def __init__(self, single_qubit_gate: cirq.Circuit) -> None:
-        super(SingleQubitUnitary, self)
-        self.single_qubit_gate = single_qubit_gate
-
-    def _num_qubits_(self) -> int:
-        return cirq.num_qubits(self.single_qubit_gate)
-
-    def _unitary_(self) -> np.ndarray:
-        return cirq.unitary(self.single_qubit_gate)
-
-    def _circuit_diagram_info_(self, _) -> str:
-        return "U_b"
-
-
 class MultiQubitUnitary(cirq.Gate):
     """Custom multi-qubit Unitary gate."""
     def __init__(self, multi_qubit_gate: cirq.Circuit) -> None:
@@ -60,7 +44,10 @@ def cnot_ladder(num_qubits: int) -> cirq.Circuit:
 
 
 def r_gate(theta: float, phi: float) -> cirq.Circuit:
-    """https://qiskit.org/documentation/stubs/qiskit.circuit.library.RGate.html"""
+    """Rotation θ around the cos(φ)x + sin(φ)y axis.
+
+    https://qiskit.org/documentation/stubs/qiskit.circuit.library.RGate.html
+    """
     mat = np.array([
         [np.cos(theta/2), -1j * np.exp(-1j * phi) * np.sin(theta/2)],
         [-1j*np.exp(1j*phi) * np.sin(theta/2), np.cos(theta/2)]
@@ -100,9 +87,9 @@ def peek_friend(
     """Peek procedure for Wigner's friend scenario."""
     circuit = cirq.Circuit()
     if friend_key == "a":
-        circuit.append(cirq.Circuit(u_obs.on(*(friend + [sys]))))
+        circuit.append(u_obs.on(*(friend + [sys])))
     elif friend_key == "b":
-        circuit.append(cirq.Circuit(u_obs.on(*([sys] + friend))))
+        circuit.append(u_obs.on(*([sys] + friend)))
 
     # Rotate the qubit to the computational basis using the Rz gate
     circuit.append(cirq.Rz(rads=-ANGLES[0]).on(sys))
@@ -288,10 +275,6 @@ if __name__ == "__main__":
     }
 
     print(positivity_facet_1_1(expectation_values))
-    print(positivity_facet_1_2(expectation_values))
-    print(positivity_facet_2_2(expectation_values))
-    print(semi_brunker_facet(expectation_values))
-    print(brunker_facet(expectation_values))
 
     exit()
 

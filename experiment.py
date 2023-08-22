@@ -1,8 +1,6 @@
+"""Replicates statistics from https://www.wignersfriends.com/"""
 from toqito.matrices import standard_basis
-from toqito.state_ops import schmidt_decomposition
-from toqito.matrix_props import is_unitary
 import numpy as np
-import scipy
 
 e0, e1 = standard_basis(2, 1)
 e00 = np.kron(e0, e0)
@@ -27,7 +25,6 @@ def experiment(a, b, x, y):
 
     return prob(proj, sys)
 
-#print(experiment(1,1,2,2))
 
 def phi(x, angles):
     e0, e1 = standard_basis(2)
@@ -43,54 +40,4 @@ def a(x, angles):
 def b(y, angles, beta):
     return 2 * np.outer(psi(y, angles, beta), psi(y, angles, beta)) - np.outer(e0, e0) - np.outer(e1, e1)
 
-
-beta = 175
-angles = [168, 0, 118]
-#z = np.outer(psi(0, angles, beta), psi(0, angles, beta))
-#print(z)
-#z = phi(0, angles)
-#print(z)
-#x = b(1, angles, beta)
-#print(x.shape)
-#print(np.around(b(1, angles, beta), decimals=8))
-
-c = np.exp(1j * (beta))
-print(c)
-
-idx = 0
-#a0 = a(idx, angles)
-#print(np.around(a0, decimals=5))
-#c = np.exp(1j * angles[idx])
-#
-##b0 = b(1, angles, beta)
-##print(np.around(b0, decimals=5))
-#
-#print(c)
-#print(c**2 - 1)
-
-b0 = b(idx, angles, beta)
-print(np.around(b0, decimals=5))
-
-c = np.exp(1j * (beta - angles[idx]))
-print(c)
-print(c**2 - 1)
-
-s = 1/np.sqrt(3) * (np.kron(e0, e0) + np.kron(e0, e1) + np.kron(e1, e0))
-print("\n")
-
-mat = np.array([
-    [1/np.sqrt(3), 1/np.sqrt(3), -1/np.sqrt(6), -1/np.sqrt(6)],
-    [1/np.sqrt(3), -1/np.sqrt(3), -1/np.sqrt(6), 1/np.sqrt(6)],
-    [1/np.sqrt(3), 0, np.sqrt(2/3), 0],
-    [0, 1/np.sqrt(3), 0, np.sqrt(2/3)],
-])
-
-
-I = np.identity(2)
-X = np.array([[0, 1], [1, 0]])
-H = 1/np.sqrt(2) * np.array([[1, 1], [1, -1]])
-U = np.array([[1/np.sqrt(3), np.sqrt(2/3)], [np.sqrt(2/3), -1/np.sqrt(3)]])
-x = np.kron(I, U) @ np.kron(H, I) @ np.kron(e0, e0)
-print(x)
-print(np.outer(x, x))
-#print(np.kron(H, H) @ np.kron(I, X) @ np.kron(e0, e0))
+print(experiment(1,1,2,2))
