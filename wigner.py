@@ -147,7 +147,7 @@ def extended_wigner_circuit(
     debbie = [cirq.GridQubit(1, i) for i in range(1, num_qubits)]
 
     # Initial preparation of state:
-    circuit = state_prep2(sys_1, sys_2)
+    circuit = state_prep(sys_1, sys_2)
 
     # Top portion of circuit (first friend setting).
     match friend_setting_1:
@@ -258,7 +258,7 @@ def positivity_facet_2_2(expectation_values: dict[str, float]) -> float:
 
 if __name__ == "__main__":
     # Define observer circuit for protocol.
-    observer_circuit = MultiQubitUnitary(cnot_ladder(6))
+    observer_circuit = MultiQubitUnitary(cnot_ladder(3))
 
     # Calculate expectation values:
     a_1, b_1 = expectation_value(extended_wigner_circuit(observer_circuit, "peek", "peek"))
@@ -274,7 +274,9 @@ if __name__ == "__main__":
         "b_1": b_1, "b_2": b_2, "b_3": b_3,
     }
 
-    print(positivity_facet_1_1(expectation_values))
+    circuit = extended_wigner_circuit(observer_circuit, "peek", "peek")
+    print(circuit)
+    #print(brunker_facet(expectation_values))
 
     exit()
 

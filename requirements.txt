@@ -2,3 +2,4 @@ toqito
 qiskit
 cirq
 pylatexenc
+qiskit-aer
