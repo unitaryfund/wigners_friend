@@ -66,18 +66,6 @@ def state_prep(sys_1: cirq.GridQubit, sys_2: cirq.GridQubit) -> cirq.Circuit:
         cirq.Ry(rads=-np.pi/4).on(sys_2),
     )
 
-def state_prep2(sys_1: cirq.GridQubit, sys_2: cirq.GridQubit) -> cirq.Circuit:
-    """Generates the initial state of 1/sqrt(3) * (|00> + |10> + |11>)"""
-    theta = np.arccos(-1/3)
-    phi = np.pi/2
-    return cirq.Circuit(
-        cirq.Ry(rads=np.pi/4).on(sys_1),
-        r_gate(theta, phi).on(sys_2),
-        cirq.CX(sys_2, sys_1),
-        cirq.Ry(rads=-np.pi/4).on(sys_1),
-        cirq.CX(sys_2, sys_1),
-    )
-
 
 def peek_friend(
         friend: list[cirq.GridQubit],
@@ -174,24 +162,10 @@ def expectation_value(circuit: cirq.Circuit, repetitions: int = 1000) -> tuple[f
     """Run the circuit `repetitions` times and calculate the resulting expectation value."""
     result = cirq.Simulator().run(program=circuit, repetitions=repetitions)
 
-    alice_measurements = np.array(result.measurements["a"][:, 0])
-    bob_measurements = np.array(result.measurements["b"][:, 0])
-
-    # Map outcomes: 0 -> +1 and 1 -> -1
-    alice_mapped_outcomes = [1 if outcome == 0 else -1 for outcome in alice_measurements]
-    bob_mapped_outcomes = [1 if outcome == 0 else -1 for outcome in bob_measurements]
-
-    # Calculate the expectation values
-    alice_expectation_value = np.mean(alice_mapped_outcomes)
-    bob_expectation_value = np.mean(bob_mapped_outcomes)
+    alice_expectation_value = 2 * np.mean(result.measurements["a"]) - 1
+    bob_expectation_value = 2 * np.mean(result.measurements["b"]) - 1
 
     return alice_expectation_value, bob_expectation_value
-
-
-def calculate_expectation(results, key):
-    measurements = results.data[key].to_numpy()
-    mapped_outcomes = [1 if outcome == 0 else -1 for outcome in measurements]
-    return np.mean(mapped_outcomes)
 
 
 def lf_facet_1(expectation_values: dict[str, float]) -> float:
@@ -224,15 +198,15 @@ def lf_facet_2(expectation_values: dict[str, float]) -> float:
         + a_1 * b_2 + a_3 * b_2 - a_2 * b_3 + a_3 * b_3 - 5
 
 
-def brunker_facet(expectation_values: dict[str, float]) -> float:
-    """Brunker inequality from Eq. (17)."""
+def brukner_facet(expectation_values: dict[str, float]) -> float:
+    """Brukner inequality from Eq. (17)."""
     a_1, b_1 = expectation_values["a_1"], expectation_values["b_1"]
     a_2, b_3 = expectation_values["a_2"], expectation_values["b_3"]
     return a_1 * b_1 - a_1 * b_3 - a_2 * b_1 - a_2 * b_3 - 2
 
 
-def semi_brunker_facet(expectation_values: dict[str, float]) -> float:
-    """Semi-brunker inequality from Eq. (18)."""
+def semi_brukner_facet(expectation_values: dict[str, float]) -> float:
+    """Semi-brukner inequality from Eq. (18)."""
     a_1, b_2 = expectation_values["a_1"], expectation_values["b_2"]
     a_3, b_3 = expectation_values["a_3"], expectation_values["b_3"]
     return -a_1 * b_2 + a_1 * b_3 - a_3 * b_2 - a_3 * b_3 - 2
@@ -276,28 +250,6 @@ if __name__ == "__main__":
 
     circuit = extended_wigner_circuit(observer_circuit, "peek", "peek")
     print(circuit)
-    #print(brunker_facet(expectation_values))
-
-    exit()
-
-    num_qubits = cirq.num_qubits(observer_circuit)
-
-    # Charlie and first part of bipartite system.
-    charlie = [cirq.GridQubit(0, i) for i in range(num_qubits-1)]
-    sys_1 = cirq.GridQubit(0, num_qubits-1)
-
-    # Debbie and second part of bipartite system.
-    sys_2 = cirq.GridQubit(1, 0)
-    debbie = [cirq.GridQubit(1, i) for i in range(1, num_qubits)]
-
-    circuit = state_prep2(sys_1, sys_2)
-
-    # Initialize Simulator
-    s = cirq.Simulator()
-
-    print('Simulate the circuit:')
-    results = s.simulate(circuit)
-    print(results)
-
-    # For sampling, we need to add a measurement at the end
-    circuit.append(cirq.measure(sys_1, sys_2, key='result'))
+    #print(lf_facet_1(expectation_values))
+    print(positivity_facet_1_1(expectation_values))
+    #print(brukner_facet(expectation_values))
