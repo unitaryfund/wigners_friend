@@ -3,3 +3,5 @@ qiskit
 cirq
 pylatexenc
 qiskit-aer
+python-dotenv
+qiskit_ibm_runtime
