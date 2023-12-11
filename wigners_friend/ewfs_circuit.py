@@ -1,10 +1,9 @@
-import random
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 
-from observer import Observer
-from setting import Setting
+from wigners_friend.observer import Observer
+from wigners_friend.setting import Setting
 
-from config import (
+from wigners_friend.config import (
     ALICE, BOB, ALICE_SIZE, BOB_SIZE,
     DEBBIE_QUBITS, DEBBIE_SIZE,
     CHARLIE_QUBITS, CHARLIE_SIZE,
@@ -55,8 +54,6 @@ def apply_setting(qc: QuantumCircuit, observer: Observer, setting: Setting, angl
     friend_size = CHARLIE_SIZE if observer is ALICE else DEBBIE_SIZE
     
     if setting is PEEK:
-        # Ask friend for the outcome. We pick a random qubit from friend's register.
-        random_offset = random.randint(0, friend_size - 1)
         qc.measure(friend_qubits, observer_creg)
 
     elif setting in [REVERSE_1, REVERSE_2]:

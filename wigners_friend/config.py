@@ -1,17 +1,21 @@
-"""X."""
+"""Configuration file for EWFS circuit."""
 import os
 import numpy as np
-from observer import Observer
-from setting import Setting
-
 import qiskit
-from qiskit_ibm_runtime import QiskitRuntimeService
 
+from qiskit_ibm_runtime import QiskitRuntimeService
+from qiskit.test import mock
+from qiskit_aer.noise import NoiseModel
+
+from wigners_friend.observer import Observer
+from wigners_friend.setting import Setting
 
 ####################################
 # * Noise model and hardware.      *
 ####################################
-USE_HARDWARE = True
+USE_HARDWARE = False
+USE_SIMULATOR = True
+USE_NOISY_SIMULATOR = False
 
 if USE_HARDWARE:
     IBM_PROVIDER_TOKEN = os.getenv("IBM_PROVIDER_TOKEN")
@@ -21,15 +25,18 @@ if USE_HARDWARE:
     # Load saved credentials
     service = QiskitRuntimeService()
     BACKEND = service.backend("ibmq_kolkata")
-else:
-    # Define the backend simulator or hardware.
-    BACKEND = qiskit.Aer.get_backend("aer_simulator")
+    NOISE_MODEL = NoiseModel.from_backend(BACKEND)
 
-# Create an empty noise model
-NOISE_MODEL = None
+if USE_SIMULATOR:
+    BACKEND = qiskit.Aer.get_backend("aer_simulator")
+    NOISE_MODEL = None
+
+if USE_NOISY_SIMULATOR:
+    BACKEND = mock.FakeKolkata()
+    NOISE_MODEL = NoiseModel.from_backend(BACKEND)
 
 # Sampling shots to run.
-SHOTS = 1000
+SHOTS = 100_000
 
 ####################################
 # * EWFS configurational settings. *
@@ -51,8 +58,8 @@ ALICE_SIZE = 1
 BOB_SIZE = 1
 
 # Size of the systems held by the "friends" (Charlie and Debbie).
-CHARLIE_SIZE = 1
-DEBBIE_SIZE = 1
+CHARLIE_SIZE = 3
+DEBBIE_SIZE = 3
 
 # Size of the bipartite quantum system.
 SYS_SIZE = ALICE_SIZE + BOB_SIZE
