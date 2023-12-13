@@ -16,7 +16,7 @@ def decode_results(results: dict[str, float], charlie_size: int, debbie_size: in
         setting_results = {}
         # Decode the keys for each measurement result of the setting.
         for k, v in results[setting].items():
-            alice_friend, bob_friend = k[:charlie_size], k[debbie_size+1:]
+            alice_friend, bob_friend = k[:charlie_size], k[debbie_size:]
 
             alice_zero_count, bob_zero_count = alice_friend.count("0"), bob_friend.count("0")
 
