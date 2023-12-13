@@ -57,22 +57,11 @@ OBSERVERS = [ALICE, BOB]
 ALICE_SIZE = 1
 BOB_SIZE = 1
 
-# Size of the systems held by the "friends" (Charlie and Debbie).
-CHARLIE_SIZE = 3
-DEBBIE_SIZE = 3
-
 # Size of the bipartite quantum system.
 SYS_SIZE = ALICE_SIZE + BOB_SIZE
 
 # Two output bits for Alice and Bob.
 MEAS_SIZE = 2
-
-# Size of entire circuit
-CIRCUIT_SIZE = SYS_SIZE + CHARLIE_SIZE + DEBBIE_SIZE
-
-# Ranges for Charlie and Debbie's qubits depending on the size of their systems:
-CHARLIE_QUBITS = range(SYS_SIZE, (SYS_SIZE + CHARLIE_SIZE))
-DEBBIE_QUBITS = range(SYS_SIZE + CHARLIE_SIZE, SYS_SIZE + (CHARLIE_SIZE + DEBBIE_SIZE))
 
 # Angles and beta term used for Alice and Bob measurement operators from arXiv:1907.05607.
 # Note that despite the fact that degrees are used, we need to convert this to radians.

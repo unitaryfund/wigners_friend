@@ -7,7 +7,7 @@ from wigners_friend.setting import Setting
 from wigners_friend.observer import Observer
 
 
-def single_expect(observer: Observer, setting: Setting, results: dict):
+def single_expect(observer: Observer, setting: Setting, results: dict) -> dict[str, float]:
     """Compute single expectation values for either Alice or Bob."""
     if observer is ALICE:
         ret = 0
@@ -49,7 +49,7 @@ def double_expect(settings: list[Setting], results: dict) -> float:
     )    
 
 
-def compute_inequalities(results: dict, verbose: bool = False):
+def compute_inequalities(results: dict, verbose: bool = False) -> dict[str, float]:
     A1 = single_expect(ALICE, PEEK, results)
     B1 = single_expect(BOB, PEEK, results)
 
@@ -96,28 +96,10 @@ def compute_inequalities(results: dict, verbose: bool = False):
         print(f"{bell_non_lf=} -- is_violated: {bell_non_lf > 0}")
         print("**************************")
         
-        print("******Expectation values******")
-        print(f"{A1=}")
-        print(f"{A2=}")
-        print(f"{A3=}")
-        print(f"{B1=}")
-        print(f"{B2=}")
-        print(f"{B3=}")
-        print(f"{A1B1=}")
-        print(f"{A1B2=}")
-        print(f"{A1B3=}")
-        print(f"{A2B1=}")
-        print(f"{A2B2=}")
-        print(f"{A2B3=}")
-        print(f"{A3B1=}")
-        print(f"{A3B2=}")
-        print(f"{A3B3=}")
-        print("******************************")
-
     return {
         "lf": lf,
         "I3322": I3322,
         "brukner": brukner,
-        "semi-brukner": semi_brukner,
+        "semi_brukner": semi_brukner,
         "bell_non_lf": bell_non_lf,
     }
