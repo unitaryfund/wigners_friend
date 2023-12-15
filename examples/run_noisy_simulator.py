@@ -1,5 +1,6 @@
 import numpy as np
 import qiskit
+from qiskit.test import mock
 
 from wigners_friend.config import ANGLES, BETA
 from wigners_friend.stats import compute_inequalities
