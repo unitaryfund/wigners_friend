@@ -3,19 +3,20 @@ import qiskit
 from qiskit.providers import fake_provider
 from qiskit_aer.noise import NoiseModel, depolarizing_error
 
-from wigners_friend.config import (ANGLES, BETA)
+from wigners_friend.config import ANGLES, BETA
 from wigners_friend.stats import compute_inequalities
 from wigners_friend.utils import generate_all_experiments
 from wigners_friend.plots import plot_friend_size_vs_violation, plot_noise_levels_vs_violation
 
 
 BACKEND = qiskit.Aer.get_backend("aer_simulator")
-SHOTS = 1000
+SHOTS = 10_000
 
 violations = []
 noise_levels = []
 friend_size = 1
-for noise_level in [0.000, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01]:
+# Ranges from 0% -> 1% of noise.
+for noise_level in np.linspace(0, 0.1, 11):
     NOISE_MODEL = NoiseModel()
 
     error = depolarizing_error(noise_level, 1)
