@@ -7,7 +7,6 @@ from wigners_friend.observer import Observer
 from wigners_friend.ewfs_circuit import ewfs
 from wigners_friend.config import SETTINGS
 from wigners_friend.config import (
-    ALICE, BOB,
     PEEK, REVERSE_1, REVERSE_2,
     SETTINGS,
 )
