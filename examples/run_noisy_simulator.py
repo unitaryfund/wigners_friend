@@ -1,13 +1,12 @@
-import numpy as np
-import qiskit
-from qiskit.test import mock
+from qiskit.providers import fake_provider
+from qiskit_aer.noise import NoiseModel
 
 from wigners_friend.config import ANGLES, BETA
 from wigners_friend.stats import compute_inequalities
 from wigners_friend.utils import generate_all_experiments
 
 
-BACKEND = mock.FakeKolkata()
+BACKEND = fake_provider.FakeKolkata()
 NOISE_MODEL = NoiseModel.from_backend(BACKEND)
 SHOTS = 10_000
 friend_size = 1

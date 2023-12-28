@@ -1,12 +1,10 @@
-import numpy as np
-import qiskit
 from qiskit.providers import fake_provider
-from qiskit_aer.noise import NoiseModel, depolarizing_error
+from qiskit_aer.noise import NoiseModel
 
 from wigners_friend.config import ANGLES, BETA
 from wigners_friend.stats import compute_inequalities
 from wigners_friend.utils import generate_all_experiments
-from wigners_friend.plots import plot_friend_size_vs_violation, plot_noise_levels_vs_violation
+from wigners_friend.plots import plot_friend_size_vs_violation
 
 
 BACKEND = fake_provider.FakeKolkata()

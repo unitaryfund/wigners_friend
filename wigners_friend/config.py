@@ -1,11 +1,5 @@
 """Configuration file for EWFS circuit."""
-import os
 import numpy as np
-import qiskit
-
-from qiskit_ibm_runtime import QiskitRuntimeService
-from qiskit.test import mock
-from qiskit_aer.noise import NoiseModel
 
 from wigners_friend.observer import Observer
 from wigners_friend.setting import Setting
